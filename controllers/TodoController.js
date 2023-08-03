@@ -16,7 +16,6 @@ const getTodos = async (req, res) => {
 
 const createTodo = async (req, res, next) => {
   const { title } = req.body;
-  console.log(title);
   const token = req.headers.authorization;
   const credentials = jwt.verify(token, "keySecret");
 
