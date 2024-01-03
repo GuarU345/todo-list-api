@@ -58,10 +58,10 @@ curl http://localhost:3000/api/ejemplo
 ```json
 [
   {
-    "title": tarea1,
+    "title": "tarea1",
     "completed": false,
     "user":{
-      "username":test1
+      "username":"test1"
     }
   }
 ]
