@@ -1,10 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { Token } from "../models/Token";
+import { prisma } from "../libs/prisma";
 
-export const authenticate = async (req: Request, _res: Response, next: NextFunction) => {
+export const authenticate = async (
+    req: Request,
+    _res: Response,
+    next: NextFunction
+) => {
     try {
-        const header = req.headers.authorization
+        const header = req.headers.authorization;
 
         if (!header || !header.startsWith("Bearer ")) {
             throw new Error("No cabecera");
@@ -12,7 +16,11 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
 
         const token = header.replace("Bearer ", "");
 
-        const tokenExist = await Token.find().where({ jwtSecretKey: token })
+        const tokenExist = await prisma.token.findFirst({
+            where: {
+                jwtSecretKey: token,
+            },
+        });
 
         if (!tokenExist) {
             throw new Error("Token Invalido");
@@ -21,6 +29,6 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
         jwt.verify(token, process.env.JWT_KEY || "");
         next();
     } catch (error) {
-        next(error)
+        next(error);
     }
-}
+};

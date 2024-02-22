@@ -1,15 +1,8 @@
 import express from "express";
 import cors from "cors";
-import { connectMongoose } from "./libs/mongo";
 import { router } from "./routes/routes";
 import morgan from "morgan";
-import { config } from "dotenv";
 
-config({
-  path: "./.env",
-});
-
-connectMongoose();
 const app = express();
 const PORT = process.env.PORT || 3000;
 

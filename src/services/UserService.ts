@@ -1,8 +1,7 @@
 import jwt from "jsonwebtoken"
 import argon2 from "argon2"
 import { UserBody } from "../types";
-import { User } from "../models/User";
-import { Token } from "../models/Token";
+import { prisma } from "../libs/prisma";
 
 
 const signup = async (body: UserBody) => {
@@ -10,7 +9,18 @@ const signup = async (body: UserBody) => {
     try {
         const hashedPassword = await argon2.hash(password);
 
-        const existUsers = await User.findOne().or([{ email: email }, { username: username }])
+        const existUsers = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    {
+                        email: email,
+                    },
+                    {
+                        username: username,
+                    },
+                ],
+            },
+        });
 
         if (existUsers && existUsers.email === email) {
             throw new Error("La cuenta con ese email ya existe");
@@ -18,7 +28,7 @@ const signup = async (body: UserBody) => {
             throw new Error("El nombre de usuario ya existe");
         }
 
-        const newUser = await User.create({
+        const newUser = await prisma.user.create({
             data: {
                 username,
                 email,
@@ -36,18 +46,27 @@ const signin = async (body: UserBody) => {
     try {
         const { email, password } = body;
 
-        const isRegister = await User.findOne().where({ email: email })
+        const isRegister = await prisma.user.findUnique({
+            where: {
+                email: email,
+            },
+            include: {
+                tokens: true,
+            },
+        });
 
-        if (!isRegister || !(await argon2.verify(isRegister.password!, password))) {
+        if (!isRegister || !(await argon2.verify(isRegister.password, password))) {
             throw new Error("Credenciales Invalidas");
         }
 
-        const tokens = await Token.find().where({ user: isRegister._id })
-
-        const tokenIds = tokens.map(token => token.id);
+        const tokenIds = isRegister.tokens.map((token) => token.id);
 
         if (tokenIds.length > 0) {
-            await Token.deleteMany({ _id: { $in: tokenIds } });
+            await prisma.token.delete({
+                where: {
+                    id: tokenIds[0],
+                },
+            });
         }
 
         const secretKey = process.env.JWT_KEY || "";
@@ -57,16 +76,16 @@ const signin = async (body: UserBody) => {
             secretKey
         );
 
-        const newToken = await Token.create({
+        const newToken = await prisma.token.create({
             data: {
                 jwtSecretKey: token,
-                user_id: isRegister.id,
+                userId: isRegister.id,
             },
         });
 
         return {
             token: newToken.jwtSecretKey,
-            user_id: newToken.user?._id,
+            user_id: newToken.userId,
         };
     } catch (error) {
         throw new Error("No se ha podido iniciar sesion");
@@ -75,9 +94,19 @@ const signin = async (body: UserBody) => {
 
 const logout = async (userId: string) => {
     try {
-        await Token.findOneAndRemove({ user: userId }).sort({
-            createdAt: -1,
-        });
+        const token = await prisma.token.findFirstOrThrow({
+            where: {
+                userId
+            },
+            orderBy: {
+                created_at: "desc"
+            }
+        })
+        return await prisma.token.delete({
+            where: {
+                id: token.id
+            }
+        })
     } catch (error) {
         throw new Error("Error al tratar de cerrar sesion")
     }
