@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
-import { connectMongoose } from "./mongo.js";
-import router from "./routes/routes.js";
+import { connectMongoose } from "./libs/mongo";
+import { router } from "./routes/routes";
 import morgan from "morgan";
 import { config } from "dotenv";
 
